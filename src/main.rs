@@ -13,7 +13,9 @@ use axum::{
 use tokio::sync::RwLock;
 use blake2::Digest;
 
+/// struct containing all the shared data
 struct AppState {
+    /// actual HashMap of HashMap storing the data, hidden behind a RwLock
     data: [RwLock<HashMap<String, HashMap<String, Vec<u8>>>>; 256],
 }
 
@@ -39,6 +41,8 @@ async fn main() {
         .unwrap();
 }
 
+/// Service a request to store a single value, given the primary key, secondary key and the data to
+/// store (request body)
 async fn api_post_one(State(state): State<Arc<AppState>>, Path((primary,secondary)): Path<(String,String)>, body: Bytes ) -> Response {
     let bin = bin_from_string(&primary) as usize;
     {
@@ -55,6 +59,7 @@ async fn api_post_one(State(state): State<Arc<AppState>>, Path((primary,secondar
     (StatusCode::OK).into_response()
 }
 
+/// Service a request to return a single value, given the primary key and the secondary key
 async fn api_get_one(State(state): State<Arc<AppState>>, Path((primary, secondary)): Path<(String, String)>) -> Response {
     let bin = bin_from_string(&primary) as usize;
     {
@@ -69,11 +74,13 @@ async fn api_get_one(State(state): State<Arc<AppState>>, Path((primary, secondar
     }
 }
 
+/// Service a request to return all the values stored under the primary key
 async fn api_get_all(State(state): State<Arc<AppState>>, Path(primary): Path<String>) -> Response {
     let bin = bin_from_string(&primary) as usize;
     (StatusCode::NOT_FOUND).into_response()
 }
 
+/// Service a request to remove a single value, given the primary key and the secondary key
 async fn api_del_one(State(state): State<Arc<AppState>>, Path((primary, secondary)): Path<(String, String)>) -> Response {
     let bin = bin_from_string(&primary) as usize;
     {
@@ -94,6 +101,7 @@ async fn api_del_one(State(state): State<Arc<AppState>>, Path((primary, secondar
     (StatusCode::OK).into_response()
 }
 
+/// Service a request to remove all the values stored under the primary key
 async fn api_del_all(State(state): State<Arc<AppState>>, Path(primary): Path<String>) -> Response {
     let bin = bin_from_string(&primary) as usize;
     {
@@ -107,6 +115,7 @@ async fn api_del_all(State(state): State<Arc<AppState>>, Path(primary): Path<Str
     (StatusCode::OK).into_response()
 }
 
+/// A helper function to decide which (out of 256 possible) bin the primary key falls into - uses blake2 hash and takes the first byte of the result
 fn bin_from_string(code: &str) -> u8 {
     let mut hasher = blake2::Blake2b512::new();
     hasher.update(code.as_bytes());
