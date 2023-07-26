@@ -70,14 +70,23 @@ async fn api_get_one(State(state): State<Arc<AppState>>, Path((primary, secondar
         let Some(data) = pk.get(&secondary) else {
             return (StatusCode::NOT_FOUND).into_response();
         };
-        (StatusCode::NOT_FOUND, data.clone()).into_response()
+        (StatusCode::OK, data.clone()).into_response()
     }
 }
 
 /// Service a request to return all the values stored under the primary key
 async fn api_get_all(State(state): State<Arc<AppState>>, Path(primary): Path<String>) -> Response {
     let bin = bin_from_string(&primary) as usize;
-    (StatusCode::NOT_FOUND).into_response()
+    {
+        let rwl = state.data[bin].read().await;
+        let Some(pk) = rwl.get(&primary) else {
+            return (StatusCode::NOT_FOUND).into_response();
+        };
+        return match rmp_serde::to_vec(&pk) {
+            Ok(x) => (StatusCode::OK, x).into_response(),
+            Err(_) => (StatusCode::INTERNAL_SERVER_ERROR).into_response(),
+        };
+    }
 }
 
 /// Service a request to remove a single value, given the primary key and the secondary key
